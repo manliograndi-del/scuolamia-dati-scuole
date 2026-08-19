@@ -59,6 +59,10 @@ stesso codice sta nell'archivio ISTAT: tutti e 6.648 i comuni con scuole
 trovano così il loro punto. Da lì vengono la mappa dei paesi e il
 localizzatore nelle schede. **Precisione: il paese, non la via.**
 
+Le mappe si ingrandiscono: due dita per pizzicare, un dito per spostarsi una
+volta dentro, la rotellina sul computer, e tre pulsanti per chi preferisce
+toccare. Oltre un certo ingrandimento compaiono i nomi dei paesi.
+
 Per la via ci sono due strade, e non richiedono le stesse cose:
 
 - **Il pulsante «Portami lì»** apre il navigatore di Google sull'indirizzo

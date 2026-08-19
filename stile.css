@@ -191,15 +191,27 @@ section.blocco + section.blocco{border-top:1px solid var(--linea)}
 /* La mappa nazionale e' alta e stretta: senza un tetto in larghezza a
    schermo grande diventa un manifesto. Quella di una singola regione ha
    proporzioni sue e puo' occupare piu' spazio. */
-.mappa{width:100%;max-width:430px;height:auto;display:block;margin:0 auto;touch-action:manipulation}
+.mappa{width:100%;max-width:430px;height:auto;display:block;margin:0 auto;touch-action:pan-y;
+  background:var(--superficie2);border-radius:8px}
+/* A mappa intera il dito scorre la pagina; appena si e' ingrandito qualcosa
+   la mappa se lo prende, e il pulsante "Tutta la mappa" glielo restituisce. */
+.mappa.ingrandita{touch-action:none;cursor:grab}
+.mappa.ingrandita:active{cursor:grabbing}
+/* Il raggio come proprieta' CSS: cosi' un numero solo li rimpicciolisce
+   tutti mentre si ingrandisce, e i paesi vicini si staccano invece di
+   restare appiccicati identici. */
+.mappa .paese, .mappa .presa{ r: calc(var(--r, 3) * var(--controscala, 1) * 1px); }
 .mappa.regionale{max-width:640px}
+/* Le linee non si ingrossano con lo zoom: vector-effect le tiene ferme in
+   punti di schermo, che e' l'unico spessore che il lettore vede. */
 .mappa path{
   stroke:var(--superficie);stroke-width:.8;stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
   cursor:pointer;transition:opacity .12s ease;
 }
 .mappa path:hover{opacity:.72}
 .mappa path:focus-visible{outline:none;stroke:var(--inchiostro);stroke-width:2.4}
-.mappa .contorno{fill:none;stroke:var(--superficie);stroke-width:1.6;pointer-events:none}
+.mappa .contorno{fill:none;stroke:var(--superficie);stroke-width:1.6;vector-effect:non-scaling-stroke;pointer-events:none}
 .mappa .fuori{cursor:default}
 .legenda-scala{display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .scala-barre{display:flex;gap:2px}
@@ -430,15 +442,15 @@ a.cl-riga:hover{background:var(--superficie2)}
    I cerchi dicono la grandezza, non l'identita': stessa tinta per tutti, e
    l'anello del colore della superficie li tiene distinti dove si accavallano
    invece di un contorno scuro che aggiungerebbe peso senza dire niente. */
-.mappa .fondo{fill:var(--griglia);stroke:var(--linea);stroke-width:1;pointer-events:none}
+.mappa .fondo{fill:var(--griglia);stroke:var(--linea);stroke-width:1;vector-effect:non-scaling-stroke;pointer-events:none}
 .mappa .paese{
   fill:var(--accento);fill-opacity:.7;
-  stroke:var(--superficie);stroke-width:var(--filo,1.4px);
+  stroke:var(--superficie);stroke-width:1.4;vector-effect:non-scaling-stroke;
   pointer-events:none;
 }
 .mappa .presa{fill:transparent;cursor:pointer}
 .mappa .presa:hover + .paese{fill-opacity:1}
-.mappa .paese.acceso{fill:var(--accento);fill-opacity:1;stroke:var(--inchiostro);stroke-width:calc(var(--filo,1.4px) * 2)}
+.mappa .paese.acceso{fill:var(--accento);fill-opacity:1;stroke:var(--inchiostro);stroke-width:2.6}
 .mappa.paesi{max-width:520px}
 .mappa.paesi.regionale{max-width:640px}
 .nota-mappa{
@@ -459,3 +471,17 @@ a.cl-riga:hover{background:var(--superficie2)}
   overflow:hidden;background:var(--superficie2);border:1px solid var(--linea);
 }
 .google iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+/* --- i comandi dello zoom ------------------------------------------------ */
+.zoom-comandi{
+  display:flex;gap:6px;align-items:center;justify-content:center;
+  margin-top:12px;flex-wrap:wrap;
+}
+.zoom-comandi button{
+  font:700 15px Archivo,sans-serif;color:var(--inchiostro);
+  background:var(--superficie2);border:1.5px solid var(--linea-forte);
+  border-radius:99px;min-width:46px;min-height:44px;padding:0 14px;cursor:pointer;
+}
+.zoom-comandi button:hover{border-color:var(--accento);color:var(--accento)}
+.zoom-comandi button[data-fa="tutta"]{font-size:13px}
+.mappa-guscio .riquadro:has(.mappa.ingrandita){box-shadow:var(--ombra-alta)}

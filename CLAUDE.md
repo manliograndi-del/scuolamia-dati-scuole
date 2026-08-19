@@ -96,6 +96,30 @@ sito mostra il localizzatore e funziona; pieno, compare la mappa di Google.
 **Non spostare quella costante dentro sito.js**: il punto è che stia in un
 file che si apre senza avere paura di rompere qualcosa.
 
+**Lo zoom cambia il riquadro di vista dell'SVG**, non ridisegna niente: è il
+modo che costa meno al telefono. Tre cose lì dentro sono scelte, non dettagli:
+
+- **A mappa intera il dito scorre la pagina** (`touch-action: pan-y`); la mappa
+  se lo prende solo quando si è ingrandito qualcosa, e il pulsante «Tutta la
+  mappa» glielo restituisce. Una mappa alta mezzo schermo che si mangia lo
+  scorrimento è una trappola.
+- **I cerchi non crescono quanto la mappa.** Se crescessero come tutto il resto,
+  ingrandire non servirebbe: due paesi vicini resterebbero appiccicati identici.
+  Il raggio è una proprietà CSS (`--r` per cerchio, `--controscala` sull'SVG),
+  così un numero solo li rimpicciolisce tutti insieme senza toccare seimila
+  elementi uno per uno. L'esponente è `k^-0.35`: più aggressivo e spariscono,
+  meno e non si staccano.
+- **Le linee non si ingrossano** (`vector-effect: non-scaling-stroke`).
+
+I **nomi dei paesi** compaiono oltre l'ingrandimento 2,4×, al massimo 26, scelti
+per numero di scuole e scartati se si accavallano o se toccano il bordo. Si
+ridisegnano 130 ms dopo che il gesto è finito, non durante.
+
+Lo zoom si accende da solo su qualunque mappa entri nella pagina, via
+`sorvegliaMappe()`: le mappe arrivano anche dopo, quando arrivano i dati, e
+ricordarsi di accenderlo in otto punti diversi era il modo giusto per
+dimenticarsene in uno.
+
 I raggi dei cerchi sulla mappa dei paesi **si misurano sul riquadro**, non in
 numeri fissi: una provincia è disegnata in un centesimo delle unità
 dell'Italia intera. Sotto ogni cerchio ne sta uno trasparente più largo

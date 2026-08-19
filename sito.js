@@ -439,7 +439,7 @@ function mappaComuni(opzioni){
   const larghezza = riquadro[2];
   const passo = larghezza / Math.sqrt(Math.max(4, punti.length));
   const massimo = passo * 0.85;
-  const minimo = Math.min(passo * 0.16, massimo * 0.5);
+  const minimo = Math.min(passo * 0.19, massimo * 0.5);
   const piuGrande = punti.length ? punti[0].n : 1;
   const fattore = massimo / Math.sqrt(Math.max(1, piuGrande));
   /* Sotto ogni cerchio ne sta uno trasparente piu' largo: i paesi piccoli
@@ -466,19 +466,244 @@ function mappaComuni(opzioni){
     const etichetta = '<b>' + esc(t.v.n) + "</b><br>" + num(t.n) + (t.n === 1 ? " scuola" : " scuole");
     return '<a href="#/comune/' + esc(t.v.c) + '" aria-label="' + esc(t.v.n) + ", " + num(t.n) + ' scuole">'
       + '<circle class="presa" cx="' + t.v.x + '" cy="' + t.v.y + '" r="' + Math.max(r, dito).toFixed(2)
-      + '" data-sugg="' + etichetta + '"></circle>'
+      + '" style="--r:' + Math.max(r, dito).toFixed(2) + '" data-sugg="' + etichetta + '"></circle>'
       + '<circle class="paese' + (acceso ? " acceso" : "") + '" cx="' + t.v.x + '" cy="' + t.v.y
-      + '" r="' + r.toFixed(2) + '" data-sugg="' + etichetta + '"></circle></a>';
+      + '" r="' + r.toFixed(2) + '" style="--r:' + r.toFixed(2) + '"'
+      + ' data-sugg="' + etichetta + '"></circle></a>';
   }).join("");
 
-  const vista = riquadro.map(function(v){ return v.toFixed(0); }).join(" ");
+  const riquadroScritto = riquadro.map(function(v){ return v.toFixed(0); }).join(" ");
 
-  return '<svg class="mappa paesi' + (ip >= 0 ? " regionale" : "") + '" viewBox="' + vista
+  return '<svg class="mappa paesi' + (ip >= 0 ? " regionale" : "") + '" viewBox="' + riquadroScritto
     + '" role="group" aria-label="' + esc(o.titolo || "I comuni con le loro scuole") + '"'
-    + ' style="--filo:' + (larghezza / 700).toFixed(3) + 'px">'
+    + '>'
     + sfondo + pallini + etichettaAccesa + "</svg>"
     + '<p class="nota-mappa">Ogni cerchio &egrave; un comune, grande quanto le scuole che ha. '
     + "La posizione &egrave; quella del paese: per la via esatta c&rsquo;&egrave; il pulsante nella scheda.</p>";
+}
+
+
+/* ===========================================================================
+   Lo zoom delle mappe
+
+   Si pizzica con due dita, si trascina col dito, si gira la rotellina, e ci
+   sono i tre pulsanti per chi preferisce toccare. Sotto non c'e' nessuna
+   libreria: si cambia il riquadro di vista dell'SVG, che e' il modo che
+   costa meno al telefono - nessun disegno viene rifatto, il browser
+   ridisegna quello che c'e' gia' alla scala nuova.
+
+   Due accortezze che fanno la differenza.
+
+   Primo, finche' si e' a mappa intera il dito scorre la pagina, come deve
+   essere: la mappa se lo prende solo dopo che si e' ingrandito qualcosa, e
+   il pulsante "Tutta la mappa" glielo restituisce. Altrimenti una mappa
+   alta mezzo schermo diventa un muro in cui il dito resta impigliato.
+
+   Secondo, i cerchi non crescono quanto la mappa. Se crescessero come tutto
+   il resto, ingrandire non servirebbe a niente: due paesi vicini
+   resterebbero appiccicati identici. Rimpicciolendoli mentre si ingrandisce
+   si staccano, ed e' li' che lo zoom comincia a servire davvero.
+   =========================================================================== */
+
+const ZOOM_MASSIMO = 40;
+const SI_PUO_RIMPICCIOLIRE = window.CSS && CSS.supports && CSS.supports("r", "1px");
+
+function attivaZoom(svg){
+  if (!svg || svg.dataset.zoom) return;
+  svg.dataset.zoom = "si";
+
+  const base = svg.getAttribute("viewBox").split(/\s+/).map(parseFloat);
+  let vista = base.slice();
+  const dita = new Map();
+  let trascinato = false, partenza = null, distanzaIniziale = 0, vistaIniziale = null;
+
+  function ingrandimento(){ return base[2] / vista[2]; }
+
+  function applica(){
+    const k = ingrandimento();
+    /* Il minimo tiene la mappa dentro il suo riquadro: ingrandire non deve
+       poter far scappare l'Italia fuori dallo schermo. */
+    const largo = Math.min(vista[2], base[2]);
+    const alto = Math.min(vista[3], base[3]);
+    vista[2] = largo; vista[3] = alto;
+    vista[0] = Math.max(base[0] - largo * 0.1, Math.min(vista[0], base[0] + base[2] - largo * 0.9));
+    vista[1] = Math.max(base[1] - alto * 0.1, Math.min(vista[1], base[1] + base[3] - alto * 0.9));
+    svg.setAttribute("viewBox", vista.map(function(v){ return v.toFixed(2); }).join(" "));
+    if (SI_PUO_RIMPICCIOLIRE) svg.style.setProperty("--controscala", Math.pow(k, -0.35).toFixed(4));
+    svg.classList.toggle("ingrandita", k > 1.02);
+    if (contenitore) contenitore.classList.toggle("ingrandita", k > 1.02);
+    chiediEtichette(k);
+  }
+
+  function versoUtente(evento){
+    const r = svg.getBoundingClientRect();
+    return {
+      fx: (evento.clientX - r.left) / r.width,
+      fy: (evento.clientY - r.top) / r.height
+    };
+  }
+
+  function zooma(fattore, fx, fy){
+    const nuovoLargo = Math.max(base[2] / ZOOM_MASSIMO, Math.min(base[2], vista[2] / fattore));
+    const nuovoAlto = nuovoLargo * base[3] / base[2];
+    const ux = vista[0] + fx * vista[2];
+    const uy = vista[1] + fy * vista[3];
+    vista[0] = ux - fx * nuovoLargo;
+    vista[1] = uy - fy * nuovoAlto;
+    vista[2] = nuovoLargo;
+    vista[3] = nuovoAlto;
+    applica();
+  }
+
+  svg.addEventListener("wheel", function(e){
+    e.preventDefault();
+    const p = versoUtente(e);
+    zooma(e.deltaY < 0 ? 1.22 : 1 / 1.22, p.fx, p.fy);
+  }, { passive: false });
+
+  svg.addEventListener("pointerdown", function(e){
+    dita.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    trascinato = false;
+    if (dita.size === 1){
+      partenza = { x: e.clientX, y: e.clientY, vista: vista.slice() };
+      if (e.pointerType === "mouse") svg.setPointerCapture(e.pointerId);
+    } else if (dita.size === 2){
+      const d = Array.from(dita.values());
+      distanzaIniziale = Math.hypot(d[0].x - d[1].x, d[0].y - d[1].y);
+      vistaIniziale = vista.slice();
+    }
+  });
+
+  svg.addEventListener("pointermove", function(e){
+    if (!dita.has(e.pointerId)) return;
+    dita.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const r = svg.getBoundingClientRect();
+
+    if (dita.size >= 2 && vistaIniziale){
+      const d = Array.from(dita.values());
+      const adesso = Math.hypot(d[0].x - d[1].x, d[0].y - d[1].y);
+      if (!distanzaIniziale) return;
+      trascinato = true;
+      const fattore = adesso / distanzaIniziale;
+      const cx = (d[0].x + d[1].x) / 2, cy = (d[0].y + d[1].y) / 2;
+      const fx = (cx - r.left) / r.width, fy = (cy - r.top) / r.height;
+      const largo = Math.max(base[2] / ZOOM_MASSIMO, Math.min(base[2], vistaIniziale[2] / fattore));
+      const alto = largo * base[3] / base[2];
+      const ux = vistaIniziale[0] + fx * vistaIniziale[2];
+      const uy = vistaIniziale[1] + fy * vistaIniziale[3];
+      vista = [ux - fx * largo, uy - fy * alto, largo, alto];
+      applica();
+      e.preventDefault();
+      return;
+    }
+
+    if (dita.size === 1 && partenza && (ingrandimento() > 1.02 || e.pointerType === "mouse")){
+      const dx = (e.clientX - partenza.x) / r.width * partenza.vista[2];
+      const dy = (e.clientY - partenza.y) / r.height * partenza.vista[3];
+      if (Math.abs(e.clientX - partenza.x) + Math.abs(e.clientY - partenza.y) > 6) trascinato = true;
+      if (!trascinato) return;
+      vista[0] = partenza.vista[0] - dx;
+      vista[1] = partenza.vista[1] - dy;
+      applica();
+      e.preventDefault();
+    }
+  });
+
+  function lasciaAndare(e){
+    dita.delete(e.pointerId);
+    if (dita.size < 2){ distanzaIniziale = 0; vistaIniziale = null; }
+    if (!dita.size) partenza = null;
+  }
+  svg.addEventListener("pointerup", lasciaAndare);
+  svg.addEventListener("pointercancel", lasciaAndare);
+  svg.addEventListener("pointerleave", lasciaAndare);
+
+  /* Chi ha trascinato voleva spostare la mappa, non aprire una provincia. */
+  svg.addEventListener("click", function(e){
+    if (trascinato){ e.preventDefault(); e.stopPropagation(); trascinato = false; }
+  }, true);
+
+  svg.addEventListener("dblclick", function(e){
+    e.preventDefault();
+    const p = versoUtente(e);
+    zooma(2, p.fx, p.fy);
+  });
+
+  /* --- i pulsanti, per chi non se la sente di pizzicare ------------------ */
+  const contenitore = svg.parentNode;
+  const comandi = document.createElement("div");
+  comandi.className = "zoom-comandi";
+  comandi.innerHTML =
+    '<button type="button" data-fa="piu" aria-label="Ingrandisci">+</button>'
+    + '<button type="button" data-fa="meno" aria-label="Rimpicciolisci">&minus;</button>'
+    + '<button type="button" data-fa="tutta">Tutta la mappa</button>';
+  comandi.addEventListener("click", function(e){
+    const b = e.target.closest("button");
+    if (!b) return;
+    const fa = b.getAttribute("data-fa");
+    if (fa === "piu") zooma(1.6, 0.5, 0.5);
+    else if (fa === "meno") zooma(1 / 1.6, 0.5, 0.5);
+    else { vista = base.slice(); applica(); }
+  });
+  svg.insertAdjacentElement("afterend", comandi);
+
+  /* --- i nomi dei paesi, quando si e' abbastanza vicini ------------------ */
+  let attesaEtichette = 0;
+  const gruppo = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  gruppo.setAttribute("class", "etichette");
+  gruppo.setAttribute("pointer-events", "none");
+  svg.appendChild(gruppo);
+
+  function chiediEtichette(k){
+    clearTimeout(attesaEtichette);
+    attesaEtichette = setTimeout(function(){ scriviEtichette(k); }, 130);
+  }
+
+  function scriviEtichette(k){
+    if (!svg.querySelector(".paese") || k < 2.4){ gruppo.textContent = ""; return; }
+    const dentro = [];
+    svg.querySelectorAll(".paese").forEach(function(c){
+      const x = parseFloat(c.getAttribute("cx")), y = parseFloat(c.getAttribute("cy"));
+      const margineX = vista[2] * 0.09, margineY = vista[3] * 0.05;
+      if (x < vista[0] + margineX || x > vista[0] + vista[2] - margineX) return;
+      if (y < vista[1] + margineY || y > vista[1] + vista[3] - margineY) return;
+      const sugg = c.getAttribute("data-sugg") || "";
+      const nome = sugg.replace(/<b>(.*?)<\/b>[\s\S]*/, "$1");
+      const quante = parseInt((sugg.match(/<br>([\d.]+)/) || [0, "0"])[1].replace(/\./g, ""), 10) || 0;
+      dentro.push({ x: x, y: y, nome: nome, quante: quante, r: parseFloat(c.getAttribute("r")) });
+    });
+    /* Prima i paesi con piu' scuole: se non ci sta tutto, che restino i
+       nomi che contano. */
+    dentro.sort(function(a, b){ return b.quante - a.quante; });
+    const corpo = vista[2] / 34;
+    const scelti = [];
+    for (let i = 0; i < dentro.length && scelti.length < 26; i++){
+      const t = dentro[i];
+      const vicino = scelti.some(function(v){
+        return Math.abs(v.x - t.x) < corpo * 4.6 && Math.abs(v.y - t.y) < corpo * 1.6;
+      });
+      if (!vicino) scelti.push(t);
+    }
+    gruppo.innerHTML = scelti.map(function(t){
+      const controscala = SI_PUO_RIMPICCIOLIRE ? Math.pow(k, -0.35) : 1;
+      return '<text class="nome-paese" x="' + t.x + '" y="'
+        + (t.y - t.r * controscala - corpo * 0.45).toFixed(2)
+        + '" style="font-size:' + corpo.toFixed(2) + 'px">' + esc(t.nome) + "</text>";
+    }).join("");
+  }
+
+  applica();
+}
+
+/* Le mappe compaiono anche dopo, quando arrivano i dati: invece di
+   ricordarsi di accendere lo zoom in otto punti diversi, si guarda quello
+   che entra nella pagina. */
+function sorvegliaMappe(){
+  const osservatore = new MutationObserver(function(){
+    document.querySelectorAll("svg.mappa:not([data-zoom])").forEach(attivaZoom);
+  });
+  osservatore.observe(document.getElementById("vista"), { childList: true, subtree: true });
+  document.querySelectorAll("svg.mappa:not([data-zoom])").forEach(attivaZoom);
 }
 
 
@@ -1314,4 +1539,5 @@ document.addEventListener("mousemove", function(e){
 document.addEventListener("mouseleave", nascondiSugg);
 window.addEventListener("blur", nascondiSugg);
 
+sorvegliaMappe();
 instrada();
