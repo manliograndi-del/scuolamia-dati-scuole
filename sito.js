@@ -73,6 +73,9 @@ let inArrivo = null;   /* la promessa in corso, per non chiedere due volte */
 
 function conAnagrafe(){
   if (A) return Promise.resolve(A);
+  /* Se l'anagrafe e' gia' dentro la pagina non c'e' niente da chiedere:
+     e' il caso della copia in un file solo (strumenti/pagina-unica.py). */
+  if (typeof D_SCU !== "undefined") return Promise.resolve(costruisciIndici());
   if (inArrivo) return inArrivo;
   inArrivo = new Promise(function(risolvi, rifiuta){
     window.anagrafePronta = function(){ risolvi(costruisciIndici()); };
