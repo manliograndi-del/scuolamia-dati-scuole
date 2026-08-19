@@ -32,11 +32,12 @@ def costruisci(uscita, senza_guscio=False):
         '<link rel="stylesheet" href="stile.css">',
         "<style>\n" + leggi("stile.css") + "\n</style>")
 
-    # L'anagrafe entra prima del programma: cosi' conAnagrafe() la trova gia'
-    # in casa e non prova a chiederla alla rete.
+    # Anagrafe e punti dei comuni entrano prima del programma: cosi'
+    # conAnagrafe() e conComuni() li trovano gia' in casa e non provano a
+    # chiederli alla rete, che in un file solo non c'e'.
     dentro = "\n".join(
         "<script>\n" + leggi("dati", nome) + "\n</script>"
-        for nome in ("sintesi.js", "confini.js", "scuole.js"))
+        for nome in ("sintesi.js", "confini.js", "comuni.js", "scuole.js"))
     pagina = pagina.replace('<script src="chiave-google.js"></script>',
                             "<script>\n" + leggi("chiave-google.js") + "\n</script>")
     pagina = pagina.replace('<script src="dati/sintesi.js"></script>', dentro)
