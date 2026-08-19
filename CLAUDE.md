@@ -72,6 +72,35 @@ Nella posta elettronica il trattino `-` significa «assente per davvero» e il
 campo vuoto significa «ricavabile dal codice dell'istituto». Non confonderli:
 880 scuole non hanno la posta e 49.341 ce l'hanno nella forma standard.
 
+## Le mappe, e cosa costa cosa
+
+Il ministero **non deposita coordinate**. Deposita il codice catastale del
+comune, che è anche nell'archivio ISTAT: da lì i 6.648 punti dei comuni
+(`dati/comuni.js`, 250 KB, caricato solo quando la mappa scende ai paesi).
+Precisione: il paese, non la via.
+
+`dati/confini.js` porta anche `C_PROIEZIONE`, i tre numeri della proiezione di
+Mercatore usata per il disegno. Con quelli qualunque coppia latitudine e
+longitudine si mette sulla mappa: li usa `strumenti/geocodifica.py`, li può
+usare il sito.
+
+**La cosa da non dimenticare**: per la mappa di Google dentro la scheda **non
+serve geocodificare niente**. La Maps Embed API vuole l'indirizzo scritto e
+cerca lei il posto. Geocodificare i 50.273 indirizzi con Google costerebbe
+circa 250 euro e non servirebbe a quello. Le coordinate servono solo per
+mettere molte scuole insieme sulla stessa mappa.
+
+`chiave-google.js` è l'unico file pensato per essere modificato a mano, da
+lui, dall'editor web di GitHub: una riga, con le istruzioni sopra. Vuoto, il
+sito mostra il localizzatore e funziona; pieno, compare la mappa di Google.
+**Non spostare quella costante dentro sito.js**: il punto è che stia in un
+file che si apre senza avere paura di rompere qualcosa.
+
+I raggi dei cerchi sulla mappa dei paesi **si misurano sul riquadro**, non in
+numeri fissi: una provincia è disegnata in un centesimo delle unità
+dell'Italia intera. Sotto ogni cerchio ne sta uno trasparente più largo
+(`.presa`), perché un dito non prende un puntino.
+
 ## Decisioni di progetto già prese, con la ragione
 
 - **Il colore misura, non decora.** Una sola tinta, il blu inchiostro. Sulla

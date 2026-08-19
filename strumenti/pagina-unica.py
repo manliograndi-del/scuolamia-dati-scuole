@@ -37,6 +37,8 @@ def costruisci(uscita, senza_guscio=False):
     dentro = "\n".join(
         "<script>\n" + leggi("dati", nome) + "\n</script>"
         for nome in ("sintesi.js", "confini.js", "scuole.js"))
+    pagina = pagina.replace('<script src="chiave-google.js"></script>',
+                            "<script>\n" + leggi("chiave-google.js") + "\n</script>")
     pagina = pagina.replace('<script src="dati/sintesi.js"></script>', dentro)
     pagina = pagina.replace('<script src="dati/confini.js"></script>', "")
     pagina = pagina.replace('<script src="sito.js"></script>',

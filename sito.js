@@ -927,6 +927,25 @@ function vistaProvincia(slug){
   });
 }
 
+/* --- la mappa di Google, quando c'e' la chiave ---------------------------
+   La Maps Embed API vuole l'indirizzo scritto, non le coordinate: e' Google
+   a cercare il posto. Vuol dire che non serve tradurre in latitudine e
+   longitudine cinquantamila indirizzi - che sarebbe la parte cara - per
+   avere la mappa vera di una singola scuola.
+   Senza chiave la funzione restituisce niente e resta il localizzatore. */
+function mappaGoogle(s){
+  if (typeof CHIAVE_GOOGLE === "undefined" || !CHIAVE_GOOGLE) return "";
+  const posto = (s.indirizzo ? s.indirizzo + ", " : "") + (s.cap ? s.cap + " " : "")
+    + s.comune + ", " + s.provincia + ", Italia";
+  const sorgente = "https://www.google.com/maps/embed/v1/place?key=" + encodeURIComponent(CHIAVE_GOOGLE)
+    + "&q=" + encodeURIComponent(posto) + "&language=it&region=IT&zoom=16";
+  return '<div class="google"><iframe src="' + esc(sorgente) + '" loading="lazy"'
+    + ' referrerpolicy="no-referrer-when-downgrade" allowfullscreen'
+    + ' title="Mappa di Google sull&rsquo;indirizzo della scuola"></iframe></div>'
+    + '<p class="nota-mappa">Mappa di Google sull&rsquo;indirizzo depositato in anagrafe. '
+    + "Se l&rsquo;indirizzo &egrave; scritto male, sbaglia anche lei: il posto lo cerca da quella riga.</p>";
+}
+
 /* Dove sta il paese, dentro la sua provincia. Non e' la via: e' il colpo
    d'occhio che dice "e' quassu' in montagna" o "e' sulla costa". Per la via
    c'e' il pulsante che apre il navigatore. */
@@ -1036,7 +1055,17 @@ function vistaScuola(codice){
             }).join("") + "</div>"
           + "</div></section>"
         : "");
-    localizzatore(document.getElementById("dove-scuola"), s.provinciaSlug, s.comuneCod, s.provincia);
+    const riquadroGoogle = mappaGoogle(s);
+    if (riquadroGoogle){
+      document.getElementById("dove-scuola").innerHTML = riquadroGoogle;
+      const sotto = document.createElement("div");
+      sotto.className = "riquadro";
+      sotto.style.marginTop = "14px";
+      document.getElementById("dove-scuola").after(sotto);
+      localizzatore(sotto, s.provinciaSlug, s.comuneCod, s.provincia);
+    } else {
+      localizzatore(document.getElementById("dove-scuola"), s.provinciaSlug, s.comuneCod, s.provincia);
+    }
   });
 }
 

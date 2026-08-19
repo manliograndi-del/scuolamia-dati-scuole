@@ -210,6 +210,10 @@ def costruisci(f_regioni, f_province, f_comuni):
         f.write("   Confini amministrativi ISTAT via openpolis/geojson-italy, CC-BY 4.0.\n")
         f.write("   Gia' proiettati e semplificati: il sito li disegna e basta. */\n")
         f.write('const C_RIQUADRO = "0 0 %d %d";\n' % (LARGHEZZA, math.ceil(altezza)))
+        # I numeri della proiezione, scritti in chiaro: con questi chiunque
+        # puo' mettere sulla mappa un punto di cui conosce latitudine e
+        # longitudine, senza rifare i conti a mano.
+        f.write('const C_PROIEZIONE = {"x0":%r,"y1":%r,"scala":%r};\n' % (x0, y1, scala))
         f.write("const C_REGIONI = %s;\n" % json.dumps(voci_r, ensure_ascii=False, separators=(",", ":")))
         f.write("const C_PROVINCE = %s;\n" % json.dumps(voci_p, ensure_ascii=False, separators=(",", ":")))
 

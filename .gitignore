@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# La cache del geocodificatore: si rifa da sola, non va nel repository.
+strumenti/cache-posizioni.json
