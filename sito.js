@@ -751,7 +751,9 @@ function schedaScuola(i){
   voci += voce("Caratteristica", esc(tondo(s.caratteristica)));
   voci += voce("Sede direttiva", s.direttivo ? "S&igrave;" : "No");
   voci += voce("Sede scolastica", s.sede ? "S&igrave;" : "No");
-  voci += voce("Omnicomprensivo", s.omni ? '<span class="mono">' + esc(s.omni) + "</span>" : vuoto("non indicato"));
+  /* Stessa ragione della PEC: il campo e' compilato per 297 scuole su
+     50.273, e ripetere "non indicato" cinquantamila volte non dice niente. */
+  if (s.omni) voci += voce("Omnicomprensivo", '<span class="mono">' + esc(s.omni) + "</span>");
 
   const mappa = "https://www.google.com/maps/search/?api=1&query="
     + encodeURIComponent((s.indirizzo ? s.indirizzo + ", " : "") + s.cap + " " + s.comune + " " + s.provincia);

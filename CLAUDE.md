@@ -142,11 +142,13 @@ dell'Italia intera. Sotto ogni cerchio ne sta uno trasparente più largo
 - **Il maiuscolo del ministero viene rimesso in tondo** (`tondo()`), ma le sigle
   scolastiche restano (IC, ITIS, CPIA), le preposizioni si abbassano («IC di
   Abano Terme») e le iniziali puntate no: «E. Pantano», non «e. Pantano».
-- **La riga della PEC compare solo se la PEC c'è.** Risulta depositata per due
-  scuole su 50.273: una riga che dice «non depositata» cinquantamila volte non
-  informa nessuno, occupa e basta. Le altre righe vuote restano visibili
-  apposta — dire «non depositato» del sito o della posta è un'informazione
-  vera, perché lì il campo qualche volta è pieno.
+- **PEC e omnicomprensivo compaiono solo se ci sono.** La PEC risulta
+  depositata per 2 scuole su 50.273, l'omnicomprensivo per 297: righe che
+  dicono «non depositata» cinquantamila volte non informano nessuno, occupano
+  e basta. Le altre righe vuote restano visibili apposta — dire «non
+  depositato» del sito o della posta è un'informazione vera, perché lì il
+  campo qualche volta è pieno e sapere che *quella* scuola non ce l'ha è un
+  dato.
 - **Gli elenchi lunghi si disegnano a scaglioni di 24** (`elencoSchede`): Roma ha
   1.271 sedi, e metterle tutte insieme nella pagina blocca il telefono.
 - **L'indirizzo tiene lo stato della ricerca** (`#/cerca?q=...&reg=...`), così un
