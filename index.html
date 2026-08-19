@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scuola Mia — Base dati delle scuole statali</title>
+<meta name="description" content="Le scuole statali italiane, una scheda per sede: mappa, numeri e anagrafe completa dai dati aperti del Ministero dell'Istruzione e del Merito.">
+<meta name="theme-color" content="#1D3F8B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Spline+Sans+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="stile.css">
+</head>
+<body>
+
+<header class="testata">
+  <div class="guscio">
+    <div class="testata-corpo">
+      <a class="marchio" href="#/">
+        <span>Scuola Mia ETS</span>
+        <b>Base dati delle scuole statali</b>
+      </a>
+    </div>
+    <nav class="menu" id="menu" aria-label="Sezioni del sito">
+      <a href="#/">Apertura</a>
+      <a href="#/mappa">Mappa</a>
+      <a href="#/numeri">Numeri</a>
+      <a href="#/cerca">Cerca una scuola</a>
+      <a href="#/territori">Regioni e province</a>
+    </nav>
+  </div>
+</header>
+
+<main id="vista" tabindex="-1"></main>
+
+<footer class="pie">
+  <div class="guscio">
+    <p><b>Scuola Mia ETS</b> — base dati delle scuole statali italiane.</p>
+    <p>Fonte: <a href="https://dati.istruzione.it/" target="_blank" rel="noopener">anagrafe delle scuole statali</a>
+      del Ministero dell'Istruzione e del Merito, rilevazione al 1&deg; settembre.
+      Confini amministrativi ISTAT, ridistribuiti da openpolis con licenza CC-BY 4.0.</p>
+    <p>Dove il ministero non ha compilato un campo il sito lo dice, invece di far finta di niente.
+      L'unico dato ricostruito &egrave; l'indirizzo di posta, ricavato dal codice dell'istituto dove
+      l'anagrafe non lo riporta: la scheda lo dichiara ogni volta.</p>
+    <p>Le province autonome di Trento e Bolzano e la Valle d'Aosta gestiscono le proprie scuole:
+      non compaiono nell'anagrafe statale e sul sito restano grigie.</p>
+  </div>
+</footer>
+
+<div class="suggerimento" id="suggerimento" role="status" aria-live="polite"></div>
+<div class="avvisocopia" id="avvisocopia" role="status" aria-live="polite"></div>
+
+<script src="dati/sintesi.js"></script>
+<script src="dati/confini.js"></script>
+<script src="sito.js"></script>
+</body>
+</html>

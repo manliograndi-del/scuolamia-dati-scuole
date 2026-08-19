@@ -1,0 +1,427 @@
+/* ===========================================================================
+   Scuola Mia — base dati delle scuole statali
+   Inchiostro su carta da registro: nero-blu, carta fredda, un solo accento.
+   Il blu non decora, misura: la stessa tinta piu' o meno carica dice quante
+   scuole ci sono su una mappa e in che grado stanno in un grafico.
+   Le rampe sono state verificate per contrasto e per daltonismo, non scelte
+   a occhio: chi le cambia rifaccia la verifica.
+   =========================================================================== */
+
+:root{
+  --carta:#E8EBF1;
+  --superficie:#FFFFFF;
+  --superficie2:#F2F5FA;
+  --inchiostro:#12151D;
+  --testo-tenue:#5A6272;
+  --linea:#D3D8E2;
+  --linea-forte:#B7BFCE;
+  --accento:#1D3F8B;
+  --accento-tenue:#E3EAF8;
+  --su-accento:#FFFFFF;
+  --ombra:0 1px 2px rgba(18,21,29,.05), 0 10px 26px -18px rgba(18,21,29,.45);
+  --ombra-alta:0 2px 6px rgba(18,21,29,.07), 0 24px 48px -28px rgba(18,21,29,.5);
+
+  /* Rampa dei gradi: una sola tinta, dal piu' chiaro al piu' scuro. */
+  --grado1:#8FAFE6;
+  --grado2:#5F86D2;
+  --grado3:#3660AE;
+  --grado4:#1D3F8B;
+  --fuoriscala:#6E7787;   /* comprensivi, adulti, convitti: non sono un grado */
+
+  /* Rampa della mappa: stessa logica, cinque gradini. */
+  --mappa1:#98B6E6;
+  --mappa2:#6B90D7;
+  --mappa3:#4A6FC0;
+  --mappa4:#2F52A2;
+  --mappa5:#1B3A80;
+  --mappa0:#C8CDD8;       /* territorio fuori dall'anagrafe statale */
+
+  --griglia:#E7EAF1;
+  --raggio:14px;
+  --guscio:1180px;
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --carta:#0C0F16;
+    --superficie:#151A23;
+    --superficie2:#1D222D;
+    --inchiostro:#EDF0F6;
+    --testo-tenue:#98A1B2;
+    --linea:#293040;
+    --linea-forte:#3C4454;
+    --accento:#8FAFF4;
+    --accento-tenue:#1A2337;
+    --su-accento:#0C0F16;
+    --ombra:0 1px 2px rgba(0,0,0,.5), 0 12px 32px -20px rgba(0,0,0,.95);
+    --ombra-alta:0 2px 8px rgba(0,0,0,.6), 0 28px 56px -30px rgba(0,0,0,1);
+    --grado1:#35508C;
+    --grado2:#5478C4;
+    --grado3:#85AAE8;
+    --grado4:#BCD3F8;
+    --fuoriscala:#8B93A3;
+    --mappa1:#35508C;
+    --mappa2:#4A6BB0;
+    --mappa3:#6288CE;
+    --mappa4:#85AAE8;
+    --mappa5:#B0CBF5;
+    --mappa0:#333B4A;
+    --griglia:#232A38;
+  }
+}
+:root[data-theme="dark"]{
+  --carta:#0C0F16;
+  --superficie:#151A23;
+  --superficie2:#1D222D;
+  --inchiostro:#EDF0F6;
+  --testo-tenue:#98A1B2;
+  --linea:#293040;
+  --linea-forte:#3C4454;
+  --accento:#8FAFF4;
+  --accento-tenue:#1A2337;
+  --su-accento:#0C0F16;
+  --ombra:0 1px 2px rgba(0,0,0,.5), 0 12px 32px -20px rgba(0,0,0,.95);
+  --ombra-alta:0 2px 8px rgba(0,0,0,.6), 0 28px 56px -30px rgba(0,0,0,1);
+  --grado1:#35508C;
+  --grado2:#5478C4;
+  --grado3:#85AAE8;
+  --grado4:#BCD3F8;
+  --fuoriscala:#8B93A3;
+  --mappa1:#35508C;
+  --mappa2:#4A6BB0;
+  --mappa3:#6288CE;
+  --mappa4:#85AAE8;
+  --mappa5:#B0CBF5;
+  --mappa0:#333B4A;
+  --griglia:#232A38;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  margin:0;background:var(--carta);color:var(--inchiostro);
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px;line-height:1.55;
+}
+a{color:var(--accento);text-underline-offset:2px}
+:focus-visible{outline:3px solid var(--accento);outline-offset:2px;border-radius:6px}
+.guscio{max-width:var(--guscio);margin:0 auto;padding:0 16px}
+.nascosto{display:none !important}
+.solo-lettori{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;
+}
+
+/* --- testata e navigazione ---------------------------------------------- */
+.testata{background:var(--superficie);border-bottom:1px solid var(--linea)}
+.testata-corpo{display:flex;align-items:center;gap:14px;padding:14px 0}
+.marchio{display:flex;flex-direction:column;text-decoration:none;color:inherit;margin-right:auto}
+.marchio b{
+  font-weight:800;letter-spacing:-.02em;font-size:19px;line-height:1.1;
+}
+.marchio span{
+  font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--testo-tenue);
+}
+.menu{
+  display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
+  border-top:1px solid var(--linea);padding:8px 0;
+}
+.menu::-webkit-scrollbar{display:none}
+.menu a{
+  flex:0 0 auto;text-decoration:none;border-radius:99px;padding:8px 15px;
+  font-weight:700;font-size:14px;color:var(--testo-tenue);
+}
+.menu a:hover{background:var(--superficie2);color:var(--inchiostro)}
+.menu a[aria-current="page"]{background:var(--accento);color:var(--su-accento)}
+
+/* --- titoli -------------------------------------------------------------- */
+.occhiello{
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--testo-tenue);margin:0 0 8px;
+}
+h1.titolo{
+  font-weight:800;letter-spacing:-.03em;line-height:1.03;margin:0;
+  font-size:clamp(30px,7.2vw,54px);text-wrap:balance;
+}
+h2.sezione{
+  font-weight:800;letter-spacing:-.02em;margin:0;
+  font-size:clamp(20px,4.4vw,27px);text-wrap:balance;
+}
+.strillo{margin:10px 0 0;color:var(--testo-tenue);font-size:16px;max-width:62ch}
+.strillo b{color:var(--inchiostro);font-variant-numeric:tabular-nums}
+.sezione-testa{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin:0 0 14px;
+}
+.sezione-testa p{margin:0;color:var(--testo-tenue);font-size:14px;max-width:62ch}
+
+section.blocco{padding:30px 0}
+section.blocco + section.blocco{border-top:1px solid var(--linea)}
+
+/* --- riquadri ------------------------------------------------------------ */
+.riquadro{
+  background:var(--superficie);border:1px solid var(--linea);
+  border-radius:var(--raggio);box-shadow:var(--ombra);padding:18px;
+}
+.griglia{display:grid;gap:14px}
+@media (min-width:700px){ .griglia.due{grid-template-columns:1fr 1fr} }
+@media (min-width:980px){ .griglia.tre{grid-template-columns:repeat(3,1fr)} }
+
+/* --- numeri in evidenza -------------------------------------------------- */
+.numeri{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+@media (min-width:760px){ .numeri{grid-template-columns:repeat(4,1fr)} }
+.numero{
+  background:var(--superficie);border:1px solid var(--linea);
+  border-radius:var(--raggio);padding:16px 16px 14px;
+}
+.numero .et{
+  font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--testo-tenue);margin:0 0 6px;
+}
+.numero .vl{
+  font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+  font-size:clamp(26px,6vw,36px);line-height:1;
+}
+.numero .nota{margin:6px 0 0;font-size:12.5px;color:var(--testo-tenue)}
+
+/* --- mappa --------------------------------------------------------------- */
+.mappa-guscio{display:grid;gap:18px}
+@media (min-width:900px){ .mappa-guscio{grid-template-columns:minmax(0,1fr) 300px;align-items:start} }
+/* La mappa nazionale e' alta e stretta: senza un tetto in larghezza a
+   schermo grande diventa un manifesto. Quella di una singola regione ha
+   proporzioni sue e puo' occupare piu' spazio. */
+.mappa{width:100%;max-width:430px;height:auto;display:block;margin:0 auto;touch-action:manipulation}
+.mappa.regionale{max-width:640px}
+.mappa path{
+  stroke:var(--superficie);stroke-width:.8;stroke-linejoin:round;
+  cursor:pointer;transition:opacity .12s ease;
+}
+.mappa path:hover{opacity:.72}
+.mappa path:focus-visible{outline:none;stroke:var(--inchiostro);stroke-width:2.4}
+.mappa .contorno{fill:none;stroke:var(--superficie);stroke-width:1.6;pointer-events:none}
+.mappa .fuori{cursor:default}
+.legenda-scala{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.scala-barre{display:flex;gap:2px}
+.scala-barre i{flex:1;height:12px;border-radius:2px}
+.scala-testo{
+  display:flex;justify-content:space-between;font-size:11.5px;
+  color:var(--testo-tenue);font-variant-numeric:tabular-nums;
+}
+.interruttore{display:inline-flex;gap:2px;background:var(--superficie2);border-radius:99px;padding:3px}
+.interruttore button{
+  border:0;background:none;cursor:pointer;border-radius:99px;padding:7px 14px;
+  font:700 13px Archivo,sans-serif;color:var(--testo-tenue);
+}
+.interruttore button[aria-pressed="true"]{background:var(--accento);color:var(--su-accento)}
+.classifica-mappa{display:flex;flex-direction:column;gap:2px}
+.classifica-mappa a{
+  display:flex;align-items:baseline;gap:10px;text-decoration:none;color:inherit;
+  padding:7px 8px;border-radius:8px;font-size:14px;
+}
+.classifica-mappa a:hover{background:var(--superficie2)}
+.classifica-mappa .pos{
+  font-variant-numeric:tabular-nums;color:var(--testo-tenue);font-size:12px;width:20px;
+}
+.classifica-mappa .nome{flex:1;font-weight:600}
+.classifica-mappa .val{font-variant-numeric:tabular-nums;color:var(--testo-tenue)}
+
+/* --- grafici ------------------------------------------------------------- */
+.grafico{width:100%;height:auto;display:block;overflow:visible}
+.grafico .asse{stroke:var(--linea);stroke-width:1}
+.grafico .rete{stroke:var(--griglia);stroke-width:1}
+.grafico text{fill:var(--testo-tenue);font-family:Archivo,sans-serif;font-size:12px}
+.grafico text.valore{fill:var(--inchiostro);font-variant-numeric:tabular-nums;font-weight:600}
+.grafico text.etichetta{fill:var(--inchiostro);font-weight:600}
+.grafico .barra{cursor:default}
+.grafico .barra:hover rect{opacity:.82}
+.impilata rect{shape-rendering:crispEdges}
+.legenda{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:14px}
+.legenda span{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--testo-tenue)}
+.legenda i{width:12px;height:12px;border-radius:3px;flex:0 0 auto}
+.legenda b{color:var(--inchiostro);font-variant-numeric:tabular-nums;font-weight:600}
+.legenda small{font-size:12px;color:var(--testo-tenue)}
+
+.tabellina{width:100%;border-collapse:collapse;font-size:14px}
+.tabellina caption{
+  text-align:left;font-size:11px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--testo-tenue);padding-bottom:8px;
+}
+.tabellina th,.tabellina td{
+  text-align:left;padding:8px 10px 8px 0;border-bottom:1px solid var(--linea);
+}
+.tabellina th{font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--testo-tenue)}
+.tabellina td.n{text-align:right;font-variant-numeric:tabular-nums;padding-right:0}
+.tavola-guscio{overflow-x:auto}
+
+/* --- ricerca ------------------------------------------------------------- */
+.comandi{
+  position:sticky;top:0;z-index:20;background:var(--superficie);
+  border-bottom:1px solid var(--linea);padding:10px 0 0;
+}
+.cerca{display:flex;align-items:center;gap:8px}
+.cerca input{
+  flex:1;min-width:0;font:500 17px/1.2 Archivo,sans-serif;color:var(--inchiostro);
+  background:var(--superficie2);border:1.5px solid var(--linea-forte);
+  border-radius:99px;padding:14px 16px;
+}
+.cerca input::placeholder{color:var(--testo-tenue);font-weight:400}
+.cerca input:focus{border-color:var(--accento);outline:none}
+.pulisci{border:0;background:none;color:var(--testo-tenue);font:600 14px Archivo,sans-serif;padding:12px 4px;cursor:pointer}
+.filtri{display:flex;gap:8px;padding:10px 0 0;flex-wrap:wrap}
+.filtri select{
+  font:500 14px Archivo,sans-serif;color:var(--inchiostro);background:var(--superficie2);
+  border:1.5px solid var(--linea);border-radius:99px;padding:9px 12px;max-width:48%;
+}
+.gradi{display:flex;gap:8px;overflow-x:auto;padding:10px 0;scrollbar-width:none;align-items:center}
+.gradi::-webkit-scrollbar{display:none}
+.grado{
+  flex:0 0 auto;cursor:pointer;font:600 13px Archivo,sans-serif;
+  background:var(--superficie2);color:var(--inchiostro);
+  border:1.5px solid var(--linea);border-radius:99px;padding:8px 14px;
+  display:inline-flex;align-items:center;gap:7px;
+}
+.grado .pallino{width:9px;height:9px;border-radius:50%}
+.grado[aria-pressed="true"]{background:var(--accento);border-color:var(--accento);color:var(--su-accento)}
+.grado[aria-pressed="true"] .pallino{background:var(--su-accento) !important}
+.stacco{
+  flex:0 0 auto;width:1px;height:22px;background:var(--linea-forte);margin:0 2px;
+}
+.esito{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:14px 0 0;font-size:13px;color:var(--testo-tenue);
+}
+.esito b{color:var(--inchiostro);font-variant-numeric:tabular-nums;font-size:15px}
+
+/* --- schede delle scuole ------------------------------------------------- */
+.elenco{display:grid;gap:14px;grid-template-columns:1fr;padding:12px 0 0}
+@media (min-width:720px){ .elenco{grid-template-columns:1fr 1fr} }
+@media (min-width:1080px){ .elenco{grid-template-columns:repeat(3,1fr)} }
+.scheda{
+  background:var(--superficie);border:1px solid var(--linea);border-radius:var(--raggio);
+  box-shadow:var(--ombra);overflow:hidden;display:flex;flex-direction:column;
+}
+.scheda.aperta{box-shadow:var(--ombra-alta)}
+.fascia{height:5px}
+.intestazione{padding:14px 16px 12px;border-bottom:1px solid var(--linea)}
+.scheda .nome{
+  font-family:Newsreader,Georgia,serif;font-weight:600;font-size:21px;line-height:1.2;
+  margin:0;text-wrap:balance;
+}
+.scheda .nome a{color:inherit;text-decoration:none}
+.scheda .nome a:hover{text-decoration:underline}
+.riga-tag{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{
+  font:700 11px Archivo,sans-serif;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:4px 9px;border:1.5px solid currentColor;
+  background:color-mix(in srgb, currentColor 12%, transparent);
+}
+.tag.neutro{color:var(--testo-tenue);border-color:var(--linea-forte);background:var(--superficie2)}
+.codice{
+  margin-top:10px;display:inline-flex;align-items:center;gap:8px;
+  font:500 14px "Spline Sans Mono",ui-monospace,monospace;letter-spacing:.02em;
+  background:var(--superficie2);border:1px dashed var(--linea-forte);border-radius:8px;
+  padding:6px 10px;cursor:pointer;color:var(--inchiostro);
+}
+.codice small{font:700 10px Archivo,sans-serif;letter-spacing:.1em;color:var(--testo-tenue);text-transform:uppercase}
+.corpo{padding:12px 16px 4px}
+.voce{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--linea);align-items:start}
+.corpo .voce:first-child{border-top:0}
+.et{font:700 10px Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--testo-tenue);padding-top:3px}
+.vl{font-size:14.5px;line-height:1.45;word-break:break-word}
+.vl .mono{font-family:"Spline Sans Mono",ui-monospace,monospace;font-size:13.5px}
+.vl .vuoto{color:var(--testo-tenue);font-style:italic}
+.vl .ricavata{color:var(--testo-tenue);font-size:12px;display:block}
+@media (max-width:420px){ .voce{grid-template-columns:1fr;gap:2px} .et{padding-top:0} }
+.azioni{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px 16px;margin-top:auto}
+.azione{
+  flex:1 1 auto;text-align:center;text-decoration:none;
+  font:700 13px Archivo,sans-serif;border-radius:99px;padding:11px 14px;
+  background:var(--accento-tenue);color:var(--accento);border:1px solid transparent;
+}
+.azione:hover{border-color:var(--accento)}
+
+/* --- elenchi di collegamenti --------------------------------------------- */
+.pastiglie{display:flex;flex-wrap:wrap;gap:8px}
+.pastiglia{
+  text-decoration:none;color:var(--inchiostro);background:var(--superficie);
+  border:1px solid var(--linea);border-radius:99px;padding:9px 14px;font-size:14px;
+  display:inline-flex;align-items:baseline;gap:8px;
+}
+.pastiglia:hover{border-color:var(--accento);color:var(--accento)}
+.pastiglia b{font-weight:700}
+.pastiglia span{color:var(--testo-tenue);font-variant-numeric:tabular-nums;font-size:12.5px}
+
+.briciole{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;font-size:13px;color:var(--testo-tenue);padding-top:20px}
+.briciole a{color:var(--testo-tenue)}
+.briciole a:hover{color:var(--accento)}
+
+/* --- stati --------------------------------------------------------------- */
+.avviso{padding:44px 0;text-align:center;color:var(--testo-tenue)}
+.avviso strong{display:block;color:var(--inchiostro);font-size:19px;margin-bottom:6px}
+.attesa{display:flex;align-items:center;gap:12px;justify-content:center;padding:44px 0;color:var(--testo-tenue)}
+.rotella{
+  width:22px;height:22px;border-radius:50%;flex:0 0 auto;
+  border:3px solid var(--linea-forte);border-top-color:var(--accento);
+  animation:gira .8s linear infinite;
+}
+@keyframes gira{to{transform:rotate(360deg)}}
+.altre{padding:18px 0 0;text-align:center}
+.altre button{
+  font:700 14px Archivo,sans-serif;background:var(--superficie);color:var(--inchiostro);
+  border:1.5px solid var(--linea-forte);border-radius:99px;padding:13px 26px;cursor:pointer;
+}
+.pie{
+  border-top:1px solid var(--linea);margin-top:30px;padding:26px 0 44px;
+  color:var(--testo-tenue);font-size:13px;line-height:1.7;
+}
+.pie a{color:var(--testo-tenue)}
+.suggerimento{
+  position:fixed;pointer-events:none;z-index:60;opacity:0;transition:opacity .1s ease;
+  background:var(--inchiostro);color:var(--carta);border-radius:8px;padding:8px 11px;
+  font-size:12.5px;line-height:1.35;max-width:220px;box-shadow:var(--ombra-alta);
+}
+.suggerimento.mostra{opacity:1}
+.suggerimento b{font-variant-numeric:tabular-nums}
+.avvisocopia{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:70;
+  background:var(--inchiostro);color:var(--carta);font:600 13px Archivo,sans-serif;
+  padding:10px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .18s ease;
+}
+.avvisocopia.mostra{opacity:1}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important;animation:none !important} html{scroll-behavior:auto} }
+
+/* --- classifiche a barre -------------------------------------------------
+   Barre in HTML, non in SVG: si adattano da sole alla larghezza del telefono
+   e restano leggibili dai lettori di schermo. Una sola tinta, perche' e' una
+   sola serie: la lunghezza dice il valore, il colore non deve ripeterlo. */
+.classifica{display:flex;flex-direction:column;gap:3px}
+.cl-riga{
+  display:grid;grid-template-columns:minmax(84px,30%) 1fr auto;
+  align-items:center;gap:10px;padding:6px 8px;border-radius:8px;
+  text-decoration:none;color:inherit;
+}
+a.cl-riga:hover{background:var(--superficie2)}
+.cl-nome{font-size:14px;font-weight:600;line-height:1.25}
+.cl-nome small{display:block;font-weight:400;font-size:11.5px;color:var(--testo-tenue)}
+.cl-pista{height:14px;border-radius:2px;background:var(--griglia);overflow:hidden}
+.cl-barra{height:100%;background:var(--accento);border-radius:0 4px 4px 0}
+.cl-val{
+  font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;
+  min-width:52px;text-align:right;
+}
+@media (max-width:520px){
+  .cl-riga{grid-template-columns:1fr auto;grid-template-areas:"nome val" "pista pista";gap:4px 10px}
+  .cl-nome{grid-area:nome}
+  .cl-val{grid-area:val}
+  .cl-pista{grid-area:pista}
+}
+
+/* --- composizione per grado ---------------------------------------------
+   I quattro gradi stanno su una rampa sola perche' sono in ordine; le altre
+   tre famiglie non sono un grado e prendono un grigio, non un quinto colore
+   che fingerebbe di continuare la scala. */
+.composizione{display:flex;height:26px;border-radius:4px;overflow:hidden;gap:2px;background:var(--superficie)}
+.comp-segmento{height:100%;min-width:2px;cursor:default}
+.comp-segmento:first-child{border-radius:4px 0 0 4px}
+.comp-segmento:last-child{border-radius:0 4px 4px 0}
