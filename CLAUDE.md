@@ -110,6 +110,13 @@ modo che costa meno al telefono. Tre cose lì dentro sono scelte, non dettagli:
   elementi uno per uno. L'esponente è `k^-0.35`: più aggressivo e spariscono,
   meno e non si staccano.
 - **Le linee non si ingrossano** (`vector-effect: non-scaling-stroke`).
+- **Il puntatore si aggancia alla mappa solo quando si trascina davvero**, non
+  alla pressione. `setPointerCapture` sull'SVG al `pointerdown` faceva arrivare il
+  `pointerup` sull'SVG invece che sulla regione toccata: il `click` finiva sull'SVG
+  e il collegamento della regione non scattava mai. Col dito funzionava, **col mouse
+  no**, ed è così che il difetto è passato inosservato. L'aggancio ora si prende al
+  primo movimento oltre i 6 px e si rilascia in `lasciaAndare()`. Se lo rimetti alla
+  pressione, la mappa torna a non aprirsi da computer.
 
 I **nomi dei paesi** compaiono oltre l'ingrandimento 2,4×, al massimo 26, scelti
 per numero di scuole e scartati se si accavallano o se toccano il bordo. Si

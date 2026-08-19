@@ -566,7 +566,11 @@ function attivaZoom(svg){
     trascinato = false;
     if (dita.size === 1){
       partenza = { x: e.clientX, y: e.clientY, vista: vista.slice() };
-      if (e.pointerType === "mouse") svg.setPointerCapture(e.pointerId);
+      /* Niente setPointerCapture qui. Agganciando il puntatore alla mappa fin
+         dalla pressione, il rilascio non avviene piu' sulla regione toccata: il
+         clic finisce sull'SVG e il collegamento della regione non scatta mai.
+         L'aggancio serve solo a chi trascina, e glielo diamo quando trascina
+         davvero (vedi pointermove). */
     } else if (dita.size === 2){
       const d = Array.from(dita.values());
       distanzaIniziale = Math.hypot(d[0].x - d[1].x, d[0].y - d[1].y);
@@ -600,7 +604,14 @@ function attivaZoom(svg){
     if (dita.size === 1 && partenza && (ingrandimento() > 1.02 || e.pointerType === "mouse")){
       const dx = (e.clientX - partenza.x) / r.width * partenza.vista[2];
       const dy = (e.clientY - partenza.y) / r.height * partenza.vista[3];
-      if (Math.abs(e.clientX - partenza.x) + Math.abs(e.clientY - partenza.y) > 6) trascinato = true;
+      if (Math.abs(e.clientX - partenza.x) + Math.abs(e.clientY - partenza.y) > 6){
+        /* Da qui in poi e' un trascinamento: ora l'aggancio serve, cosi' la mappa
+           continua a seguire il mouse anche se esce dal riquadro. */
+        if (!trascinato && e.pointerType === "mouse"){
+          try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+        }
+        trascinato = true;
+      }
       if (!trascinato) return;
       vista[0] = partenza.vista[0] - dx;
       vista[1] = partenza.vista[1] - dy;
@@ -610,6 +621,9 @@ function attivaZoom(svg){
   });
 
   function lasciaAndare(e){
+    try {
+      if (svg.hasPointerCapture && svg.hasPointerCapture(e.pointerId)) svg.releasePointerCapture(e.pointerId);
+    } catch (x) {}
     dita.delete(e.pointerId);
     if (dita.size < 2){ distanzaIniziale = 0; vistaIniziale = null; }
     if (!dita.size) partenza = null;
