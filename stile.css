@@ -425,3 +425,30 @@ a.cl-riga:hover{background:var(--superficie2)}
 .comp-segmento{height:100%;min-width:2px;cursor:default}
 .comp-segmento:first-child{border-radius:4px 0 0 4px}
 .comp-segmento:last-child{border-radius:0 4px 4px 0}
+
+/* --- la mappa dei paesi ---------------------------------------------------
+   I cerchi dicono la grandezza, non l'identita': stessa tinta per tutti, e
+   l'anello del colore della superficie li tiene distinti dove si accavallano
+   invece di un contorno scuro che aggiungerebbe peso senza dire niente. */
+.mappa .fondo{fill:var(--griglia);stroke:var(--linea);stroke-width:1;pointer-events:none}
+.mappa .paese{
+  fill:var(--accento);fill-opacity:.7;
+  stroke:var(--superficie);stroke-width:var(--filo,1.4px);
+  pointer-events:none;
+}
+.mappa .presa{fill:transparent;cursor:pointer}
+.mappa .presa:hover + .paese{fill-opacity:1}
+.mappa .paese.acceso{fill:var(--accento);fill-opacity:1;stroke:var(--inchiostro);stroke-width:calc(var(--filo,1.4px) * 2)}
+.mappa.paesi{max-width:520px}
+.mappa.paesi.regionale{max-width:640px}
+.nota-mappa{
+  margin:10px 0 0;font-size:12.5px;line-height:1.5;color:var(--testo-tenue);
+  max-width:52ch;
+}
+.locatore{display:grid;gap:14px}
+@media (min-width:820px){ .locatore{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start} }
+.mappa .nome-paese{
+  fill:var(--inchiostro);font-family:Archivo,sans-serif;font-weight:700;
+  text-anchor:middle;paint-order:stroke;
+  stroke:var(--superficie);stroke-width:.35em;stroke-linejoin:round;
+}

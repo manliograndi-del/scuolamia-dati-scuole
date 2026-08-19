@@ -3,12 +3,14 @@
 
     python3 strumenti/impacchetta-scuole.py SCUANAGRAFESTAT....csv
 
-Va lanciato DOPO impacchetta-confini.py: da dati/confini.js prende i nomi
-ufficiali ISTAT di regioni e province, che sono scritti meglio di quelli del
-ministero (Forli'-Cesena, Reggio nell'Emilia, Friuli-Venezia Giulia) e che
-servono a far combaciare le pagine con la mappa. Se una provincia del CSV non
-trova il suo confine lo script si ferma: meglio accorgersene qui che scoprire
-un buco nella mappa mesi dopo.
+Va lanciato DOPO impacchetta-confini.py: da dati/confini.js e dati/comuni.js
+prende i nomi ufficiali ISTAT di regioni, province e comuni, che sono scritti
+meglio di quelli del ministero (Forli'-Cesena, Reggio nell'Emilia, Abano Terme
+invece di ABANO TERME) e che servono a far combaciare le pagine con la mappa.
+I comuni si legano per codice catastale, lo stesso che il ministero usa: tutti
+e 6.648 quelli con scuole trovano il loro punto. Se qualcosa non combacia lo
+script si ferma: meglio accorgersene qui che scoprire un buco nella mappa
+mesi dopo.
 
 Scrive due file, e sono due apposta:
 
@@ -32,6 +34,7 @@ import unicodedata
 QUI = os.path.dirname(os.path.abspath(__file__))
 RADICE = os.path.dirname(QUI)
 CONFINI = os.path.join(RADICE, "dati", "confini.js")
+COMUNI = os.path.join(RADICE, "dati", "comuni.js")
 
 # Il ministero e l'ISTAT non scrivono sempre uguale.
 ALIAS = {
@@ -99,17 +102,22 @@ class Dizionario:
 
 
 def leggi_confini():
-    """Nomi e scorciatoie ufficiali, presi dal file dei confini gia' costruito."""
-    if not os.path.exists(CONFINI):
-        raise SystemExit("Manca dati/confini.js: lancia prima impacchetta-confini.py.")
+    """Nomi e scorciatoie ufficiali, presi dai file gia' costruiti."""
+    if not os.path.exists(CONFINI) or not os.path.exists(COMUNI):
+        raise SystemExit("Mancano i file dei confini: lancia prima impacchetta-confini.py.")
     testo = open(CONFINI, encoding="utf-8").read()
     reg = json.loads(re.search(r"const C_REGIONI = (\[.*?\]);\n", testo, re.S).group(1))
     prov = json.loads(re.search(r"const C_PROVINCE = (\[.*?\]);\n", testo, re.S).group(1))
-    return ({r["k"]: r for r in reg}, {p["k"]: p for p in prov})
+    blocco_comuni = re.search(r"const C_COMUNI = `(.*?)`;", open(COMUNI, encoding="utf-8").read(), re.S).group(1)
+    nomi_comuni = {}
+    for riga in blocco_comuni.split("\n"):
+        pezzi = riga.split("\t")
+        nomi_comuni[pezzi[0]] = pezzi[1]
+    return ({r["k"]: r for r in reg}, {p["k"]: p for p in prov}, nomi_comuni)
 
 
 def impacchetta(percorso_csv):
-    confini_reg, confini_prov = leggi_confini()
+    confini_reg, confini_prov, nomi_comuni = leggi_confini()
     with open(percorso_csv, encoding="utf-8-sig", newline="") as f:
         righe = list(csv.DictReader(f))
     if not righe:
@@ -142,7 +150,11 @@ def impacchetta(percorso_csv):
 
         ir = reg.indice("\t".join([cr["n"], cr["s"], x["AREAGEOGRAFICA"]]))
         ip = prov.indice("\t".join([cp["n"], cp["s"], cp["a"], b36(ir)]))
-        ic = com.indice("\t".join([x["CODICECOMUNESCUOLA"], x["DESCRIZIONECOMUNE"], b36(ip)]))
+        codice_comune = x["CODICECOMUNESCUOLA"]
+        if codice_comune not in nomi_comuni:
+            raise SystemExit("Comune senza punto sulla mappa: %s (%s)"
+                             % (x["DESCRIZIONECOMUNE"], codice_comune))
+        ic = com.indice("\t".join([codice_comune, nomi_comuni[codice_comune], b36(ip)]))
         # L'istituto e' identificato dal solo codice: le sue sedi possono
         # stare in comuni diversi, e infilare il comune nella chiave lo
         # spezzerebbe in due istituti distinti.
@@ -257,6 +269,11 @@ def scrivi_sintesi(anno, reg, prov, com, ist, tip,
                          "rs": reg.voci[int(ir, 36)].split("\t")[1], "tot": c[0], "fam": c[1:],
                          "com": comuni_per_provincia.get(i, 0)})
 
+    # Quante scuole ha ogni comune, in una riga sola: sessanta chilobyte che
+    # permettono alla mappa dei paesi di funzionare senza scaricare l'anagrafe.
+    conteggio_comuni = " ".join(
+        "%s%d" % (com.voci[i].split("\t")[0], c[0]) for i, c in sorted(cont_com.items()))
+
     comuni = sorted(
         ({"c": com.voci[i].split("\t")[0], "n": com.voci[i].split("\t")[1],
           "p": prov.voci[int(com.voci[i].split("\t")[2], 36)].split("\t")[0], "tot": c[0]}
@@ -282,6 +299,7 @@ def scrivi_sintesi(anno, reg, prov, com, ist, tip,
         "perTipologia": sorted(([k, v] for k, v in per_tipologia.items()), key=lambda x: -x[1]),
         "perCaratteristica": sorted(([k, v] for k, v in per_caratteristica.items()), key=lambda x: -x[1]),
         "mancanti": mancanti,
+        "conteggioComuni": conteggio_comuni,
         "elencoRegioni": regioni,
         "elencoProvince": province,
         "topComuni": comuni,

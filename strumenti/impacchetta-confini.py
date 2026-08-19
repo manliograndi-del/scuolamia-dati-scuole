@@ -6,11 +6,21 @@ amministrativi ISTAT (licenza CC-BY 4.0):
 
     https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson
     https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_provinces.geojson
+    https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_municipalities.geojson
 
-Arrivo: dati/confini.js, un centinaio di chilobyte di tracciati gia' proiettati
-e gia' semplificati, che il sito disegna senza chiamare nessuno.
+Arrivo: due file gia' proiettati, che il sito disegna senza chiamare nessuno.
 
-    python3 strumenti/impacchetta-confini.py regioni.geojson province.geojson
+    dati/confini.js  i tracciati di regioni e province (180 KB), sempre caricato
+    dati/comuni.js   un punto per comune (150 KB), caricato solo quando la
+                     mappa scende al livello dei paesi
+
+    python3 strumenti/impacchetta-confini.py regioni.geojson province.geojson comuni.geojson
+
+Dei comuni non servono i confini, che peserebbero megabyte: serve il punto in
+cui stanno. Il file dei comuni porta anche il codice catastale, lo stesso che
+il ministero usa per dire dove sta una scuola: e' il perno che tiene insieme
+l'anagrafe e la geografia. E porta i nomi scritti come si deve - Abano Terme,
+non ABANO TERME - che il sito usa al posto del maiuscolo ministeriale.
 
 I confini arrivano in gradi di latitudine e longitudine: qui diventano
 coordinate di disegno con una proiezione di Mercatore, la stessa delle mappe a
@@ -28,6 +38,7 @@ import unicodedata
 QUI = os.path.dirname(os.path.abspath(__file__))
 RADICE = os.path.dirname(QUI)
 USCITA = os.path.join(RADICE, "dati", "confini.js")
+USCITA_COMUNI = os.path.join(RADICE, "dati", "comuni.js")
 
 LARGHEZZA = 1000.0          # unita' di disegno del viewBox
 TOLLERANZA_REGIONI = 0.010  # gradi: circa un chilometro
@@ -115,7 +126,10 @@ def tracciato(geom, toll, trasforma):
 
 
 def baricentro(geom, trasforma):
-    """Il centro del pezzo piu' grande: e' li' che ha senso mettere l'etichetta."""
+    """Il centro del pezzo piu' grande, calcolato come baricentro d'area.
+
+    La media dei vertici non andrebbe bene: su una costa frastagliata i punti
+    si affollano da una parte e il centro scivola nel mare."""
     grande, quanto = None, -1.0
     for anello in anelli(geom):
         a = area(anello)
@@ -123,12 +137,22 @@ def baricentro(geom, trasforma):
             grande, quanto = anello, a
     if not grande:
         return 0.0, 0.0
-    sx = sum(p[0] for p in grande) / len(grande)
-    sy = sum(p[1] for p in grande) / len(grande)
-    return trasforma(sx, sy)
+    doppia, cx, cy = 0.0, 0.0, 0.0
+    for i in range(len(grande) - 1):
+        x0, y0 = grande[i]
+        x1, y1 = grande[i + 1]
+        incrocio = x0 * y1 - x1 * y0
+        doppia += incrocio
+        cx += (x0 + x1) * incrocio
+        cy += (y0 + y1) * incrocio
+    if abs(doppia) < 1e-12:
+        sx = sum(p[0] for p in grande) / len(grande)
+        sy = sum(p[1] for p in grande) / len(grande)
+        return trasforma(sx, sy)
+    return trasforma(cx / (3 * doppia), cy / (3 * doppia))
 
 
-def costruisci(f_regioni, f_province):
+def costruisci(f_regioni, f_province, f_comuni):
     regioni = json.load(open(f_regioni, encoding="utf-8"))["features"]
     province = json.load(open(f_province, encoding="utf-8"))["features"]
 
@@ -193,9 +217,39 @@ def costruisci(f_regioni, f_province):
           % (len(voci_r), len(voci_p), os.path.getsize(USCITA) / 1024.0,
              LARGHEZZA, math.ceil(altezza)))
 
+    scrivi_comuni(f_comuni, trasforma, {p["k"]: i for i, p in enumerate(voci_p)})
+
+
+def scrivi_comuni(f_comuni, trasforma, posto_provincia):
+    """Un punto per comune, col codice catastale che lo lega all'anagrafe."""
+    comuni = json.load(open(f_comuni, encoding="utf-8"))["features"]
+    voci = []
+    for f in comuni:
+        p = f["properties"]
+        cx, cy = baricentro(f["geometry"], trasforma)
+        chiave_prov = chiave(p["prov_name"].split("/")[0])
+        voci.append("\t".join([
+            p["com_catasto_code"],
+            p["name"],
+            "%.1f" % cx,
+            "%.1f" % cy,
+            str(posto_provincia.get(chiave_prov, -1)),
+        ]))
+    voci.sort()
+    with open(USCITA_COMUNI, "w", encoding="utf-8") as f:
+        f.write("/* Generato da strumenti/impacchetta-confini.py.\n")
+        f.write("   Un comune per riga: codice catastale, nome, punto sulla mappa,\n")
+        f.write("   posto della provincia dentro C_PROVINCE. Niente confini: per\n")
+        f.write("   ottomila comuni peserebbero megabyte e sulla mappa non si\n")
+        f.write("   vedrebbero comunque. */\n")
+        f.write("const C_COMUNI = `%s`;\n" % "\n".join(voci))
+        f.write("if (window.comuniPronti) window.comuniPronti();\n")
+    print("comuni.js scritto: %d comuni, %.0f KB"
+          % (len(voci), os.path.getsize(USCITA_COMUNI) / 1024.0))
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        raise SystemExit("Uso: impacchetta-confini.py regioni.geojson province.geojson")
+    if len(sys.argv) != 4:
+        raise SystemExit("Uso: impacchetta-confini.py regioni.geojson province.geojson comuni.geojson")
     sys.setrecursionlimit(100000)
-    costruisci(sys.argv[1], sys.argv[2])
+    costruisci(sys.argv[1], sys.argv[2], sys.argv[3])

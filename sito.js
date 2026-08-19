@@ -367,6 +367,121 @@ function mappa(opzioni){
     + pezzi + contorni + '</svg>' + scala;
 }
 
+/* --- i comuni sulla mappa ------------------------------------------------
+   Il ministero non deposita nessuna coordinata: nelle sue venti colonne non
+   c'e' una latitudine. Quello che c'e' e' il codice catastale del comune, e
+   quello stesso codice sta nell'archivio ISTAT dei confini: tutti e 6.648 i
+   comuni con scuole trovano il loro punto. Da li' viene questa mappa.
+   Precisione: il paese, non la via. Per la via c'e' il pulsante che apre
+   Google Maps sull'indirizzo scritto in anagrafe. */
+let COMUNI = null;          /* [{c, n, x, y, p}] */
+let COMUNE_DA_CODICE = null;
+let inArrivoComuni = null;
+let CONTEGGIO = null;
+
+function conComuni(){
+  if (COMUNI) return Promise.resolve(COMUNI);
+  if (typeof C_COMUNI !== "undefined") return Promise.resolve(leggiComuni());
+  if (inArrivoComuni) return inArrivoComuni;
+  inArrivoComuni = new Promise(function(risolvi, rifiuta){
+    window.comuniPronti = function(){ risolvi(leggiComuni()); };
+    const s = document.createElement("script");
+    s.src = "dati/comuni.js";
+    s.onerror = function(){ rifiuta(new Error("comuni non raggiungibili")); };
+    document.head.appendChild(s);
+  });
+  return inArrivoComuni;
+}
+
+function leggiComuni(){
+  COMUNI = C_COMUNI.split("\n").map(function(r){
+    const c = r.split("\t");
+    return { c:c[0], n:c[1], x:parseFloat(c[2]), y:parseFloat(c[3]), p:parseInt(c[4], 10) };
+  });
+  COMUNE_DA_CODICE = new Map();
+  COMUNI.forEach(function(v){ COMUNE_DA_CODICE.set(v.c, v); });
+  return COMUNI;
+}
+
+/* Quante scuole per comune, srotolate dalla riga compatta della sintesi:
+   il codice catastale e' sempre quattro caratteri, il resto e' il numero. */
+function conteggioComuni(){
+  if (CONTEGGIO) return CONTEGGIO;
+  CONTEGGIO = new Map();
+  SINTESI.conteggioComuni.split(" ").forEach(function(v){
+    CONTEGGIO.set(v.slice(0, 4), parseInt(v.slice(4), 10));
+  });
+  return CONTEGGIO;
+}
+
+/* opzioni: provincia (scorciatoia, per restringere), evidenzia (codice
+   catastale da mettere in risalto), titolo (per i lettori di schermo) */
+function mappaComuni(opzioni){
+  const o = opzioni || {};
+  const conta = conteggioComuni();
+  const ip = o.provincia ? C_PROVINCE.findIndex(function(p){ return p.s === o.provincia; }) : -1;
+  const dentro = ip >= 0 ? [C_PROVINCE[ip]] : C_PROVINCE;
+
+  const punti = COMUNI.filter(function(v){
+    if (ip >= 0 && v.p !== ip) return false;
+    return conta.has(v.c) || v.c === o.evidenzia;
+  }).map(function(v){
+    return { v:v, n: conta.get(v.c) || 0 };
+  }).sort(function(a, b){ return b.n - a.n; });   /* i grandi sotto, i piccoli sopra */
+
+  /* La grandezza dei cerchi si misura sul riquadro, non in numeri fissi:
+     una provincia e' disegnata in un centesimo delle unita' dell'Italia
+     intera, e un raggio buono per il paese diventa un blob sulla provincia.
+     Il riferimento e' la distanza media fra due paesi vicini. */
+  const riquadro = ip >= 0
+    ? riquadroDi([C_PROVINCE[ip].d])
+    : C_RIQUADRO.split(" ").map(parseFloat);
+  const larghezza = riquadro[2];
+  const passo = larghezza / Math.sqrt(Math.max(4, punti.length));
+  const massimo = passo * 0.85;
+  const minimo = Math.min(passo * 0.16, massimo * 0.5);
+  const piuGrande = punti.length ? punti[0].n : 1;
+  const fattore = massimo / Math.sqrt(Math.max(1, piuGrande));
+  /* Sotto ogni cerchio ne sta uno trasparente piu' largo: i paesi piccoli
+     sono puntini, e un dito non prende un puntino. */
+  const dito = Math.max(passo * 0.5, larghezza / 90);
+
+  const sfondo = dentro.map(function(p){
+    return '<path class="fondo" d="' + p.d + '"></path>';
+  }).join("");
+
+  let etichettaAccesa = "";
+  const pallini = punti.map(function(t){
+    let r = Math.max(minimo, Math.min(massimo, Math.sqrt(t.n) * fattore));
+    const acceso = t.v.c === o.evidenzia;
+    if (acceso){
+      /* Il paese cercato non deve essere il puntino piu' piccolo della mappa:
+         se ha poche scuole lo si ingrandisce apposta, e gli si scrive il nome
+         accanto, altrimenti trovarlo e' un gioco di pazienza. */
+      r = Math.max(r, passo * 0.5);
+      etichettaAccesa = '<text class="nome-paese" x="' + t.v.x + '" y="'
+        + (t.v.y - r - passo * 0.35).toFixed(2) + '" style="font-size:'
+        + (passo * 0.7).toFixed(2) + 'px">' + esc(t.v.n) + "</text>";
+    }
+    const etichetta = '<b>' + esc(t.v.n) + "</b><br>" + num(t.n) + (t.n === 1 ? " scuola" : " scuole");
+    return '<a href="#/comune/' + esc(t.v.c) + '" aria-label="' + esc(t.v.n) + ", " + num(t.n) + ' scuole">'
+      + '<circle class="presa" cx="' + t.v.x + '" cy="' + t.v.y + '" r="' + Math.max(r, dito).toFixed(2)
+      + '" data-sugg="' + etichetta + '"></circle>'
+      + '<circle class="paese' + (acceso ? " acceso" : "") + '" cx="' + t.v.x + '" cy="' + t.v.y
+      + '" r="' + r.toFixed(2) + '" data-sugg="' + etichetta + '"></circle></a>';
+  }).join("");
+
+  const vista = riquadro.map(function(v){ return v.toFixed(0); }).join(" ");
+
+  return '<svg class="mappa paesi' + (ip >= 0 ? " regionale" : "") + '" viewBox="' + vista
+    + '" role="group" aria-label="' + esc(o.titolo || "I comuni con le loro scuole") + '"'
+    + ' style="--filo:' + (larghezza / 700).toFixed(3) + 'px">'
+    + sfondo + pallini + etichettaAccesa + "</svg>"
+    + '<p class="nota-mappa">Ogni cerchio &egrave; un comune, grande quanto le scuole che ha. '
+    + "La posizione &egrave; quella del paese: per la via esatta c&rsquo;&egrave; il pulsante nella scheda.</p>";
+}
+
+
 /* --- la scheda di una scuola --------------------------------------------- */
 function voce(etichetta, valore){
   return '<div class="voce"><div class="et">' + etichetta + '</div><div class="vl">' + valore + "</div></div>";
@@ -384,7 +499,7 @@ function schedaScuola(i){
 
   const dove = (s.indirizzo ? esc(tondo(s.indirizzo)) + "<br>" : "")
     + (s.cap ? esc(s.cap) + " " : "")
-    + '<a href="#/comune/' + esc(s.comuneCod) + '">' + esc(tondo(s.comune)) + "</a>"
+    + '<a href="#/comune/' + esc(s.comuneCod) + '">' + esc(s.comune) + "</a>"
     + ' (<a href="#/provincia/' + esc(s.provinciaSlug) + '">' + esc(s.sigla) + "</a>)"
     + (s.indirizzo ? "" : "<br>" + vuoto("via e numero civico non depositati"));
 
@@ -412,7 +527,7 @@ function schedaScuola(i){
 
   const mappa = "https://www.google.com/maps/search/?api=1&query="
     + encodeURIComponent((s.indirizzo ? s.indirizzo + ", " : "") + s.cap + " " + s.comune + " " + s.provincia);
-  let azioni = '<a class="azione" href="' + esc(mappa) + '" target="_blank" rel="noopener">Mappa</a>';
+  let azioni = '<a class="azione" href="' + esc(mappa) + '" target="_blank" rel="noopener">Portami l&igrave;</a>';
   if (s.email) azioni += '<a class="azione" href="mailto:' + esc(s.email) + '">Scrivi</a>';
   if (s.sito) azioni += '<a class="azione" href="' + esc(indirizzoWeb(s.sito)) + '" target="_blank" rel="noopener">Sito</a>';
 
@@ -523,27 +638,58 @@ function vistaApertura(){
 /* --- mappa a tutta pagina ------------------------------------------------ */
 let livelloMappa = "regioni";
 function vistaMappa(){
+  const perComuni = livelloMappa === "comuni";
   const perProvincia = livelloMappa === "province";
-  const elenco = (perProvincia ? SINTESI.elencoProvince : SINTESI.elencoRegioni)
-    .slice().sort(function(a,b){ return b.tot - a.tot; });
+
+  /* Al livello dei paesi servono i punti: 250 KB che si chiedono solo qui. */
+  if (perComuni && !COMUNI){
+    disegnaMappa(attesa("Carico i punti dei 7.896 comuni"));
+    conComuni().then(function(){ if (livelloMappa === "comuni") vistaMappa(); })
+      .catch(function(){
+        disegnaMappa('<div class="avviso"><strong>Punti dei comuni non raggiungibili</strong>'
+          + "Manca il collegamento, oppure il file non &egrave; stato pubblicato.</div>");
+      });
+    return;
+  }
+
+  const elenco = perComuni
+    ? SINTESI.topComuni.map(function(c){ return { n:c.n, s:c.c, tot:c.tot, dove:"comune" }; })
+    : (perProvincia ? SINTESI.elencoProvince : SINTESI.elencoRegioni)
+        .slice().sort(function(a,b){ return b.tot - a.tot; })
+        .map(function(v){ return { n:v.n, s:v.s, tot:v.tot, dove: perProvincia ? "provincia" : "regione" }; });
+
+  const disegno = perComuni
+    ? mappaComuni({ titolo:"I comuni italiani con le loro scuole" })
+    : mappa({ livello: livelloMappa });
+
+  disegnaMappa(disegno, elenco, perComuni
+    ? "I sessanta comuni con pi&ugrave; scuole"
+    : (perProvincia ? "Province" : "Regioni") + " per numero di scuole");
+}
+
+function disegnaMappa(disegno, elenco, titoloElenco){
+  const bottoni = [["regioni","Regioni"],["province","Province"],["comuni","Comuni"]];
   vista.innerHTML =
     '<section class="blocco"><div class="guscio">'
     + '<div class="sezione-testa">'
     +   '<div><p class="occhiello">Mappa</p><h1 class="titolo">L&rsquo;Italia per numero di scuole</h1></div>'
     +   '<div class="interruttore" role="group" aria-label="Livello della mappa">'
-    +     '<button type="button" data-livello="regioni" aria-pressed="' + (!perProvincia) + '">Regioni</button>'
-    +     '<button type="button" data-livello="province" aria-pressed="' + perProvincia + '">Province</button>'
+    +     bottoni.map(function(b){
+            return '<button type="button" data-livello="' + b[0] + '" aria-pressed="'
+              + (livelloMappa === b[0]) + '">' + b[1] + "</button>";
+          }).join("")
     +   "</div>"
     + "</div>"
     + '<div class="mappa-guscio">'
-    +   '<div class="riquadro">' + mappa({ livello: livelloMappa }) + "</div>"
-    +   '<div class="riquadro"><p class="et" style="margin:0 0 10px">'
-    +     (perProvincia ? "Province" : "Regioni") + " per numero di scuole</p>"
-    +     '<div class="classifica-mappa">' + elenco.map(function(r, k){
-            return '<a href="#/' + (perProvincia ? "provincia" : "regione") + "/" + esc(r.s)
-              + '"><span class="pos">' + (k+1) + '</span><span class="nome">' + esc(r.n)
-              + '</span><span class="val">' + num(r.tot) + "</span></a>";
-          }).join("") + "</div></div>"
+    +   '<div class="riquadro">' + disegno + "</div>"
+    +   (elenco
+        ? '<div class="riquadro"><p class="et" style="margin:0 0 10px">' + titoloElenco + "</p>"
+          + '<div class="classifica-mappa">' + elenco.map(function(r, k){
+              return '<a href="#/' + r.dove + "/" + esc(r.s) + '"><span class="pos">' + (k+1)
+                + '</span><span class="nome">' + esc(r.n) + '</span><span class="val">'
+                + num(r.tot) + "</span></a>";
+            }).join("") + "</div></div>"
+        : "")
     + "</div>"
     + '<p class="strillo" style="margin-top:18px">Trentino-Alto Adige e Valle d&rsquo;Aosta gestiscono le proprie '
     + "scuole e non compaiono nell&rsquo;anagrafe statale: sulla mappa restano grigie.</p>"
@@ -622,11 +768,11 @@ function vistaNumeri(){
     + '<div class="griglia due">'
     +   '<div class="riquadro"><p class="et" style="margin:0 0 12px">I venti comuni con piu&rsquo; scuole</p>'
     +     classifica(S.topComuni.slice(0,20).map(function(c){
-            return { nome: tondo(c.n), sotto: c.p, valore: c.tot, href:"#/comune/" + c.c };
+            return { nome: c.n, sotto: c.p, valore: c.tot, href:"#/comune/" + c.c };
           })) + "</div>"
     +   '<div class="riquadro"><p class="et" style="margin:0 0 12px">I venti istituti con piu&rsquo; sedi</p>'
     +     classifica(S.topIstituti.slice(0,20).map(function(c){
-            return { nome: tondo(c.n) || c.c, sotto: tondo(c.m), valore: c.tot, href:"#/istituto/" + c.c };
+            return { nome: tondo(c.n) || c.c, sotto: c.m, valore: c.tot, href:"#/istituto/" + c.c };
           })) + "</div>"
     + "</div>"
     + "</div></section>";
@@ -738,7 +884,22 @@ function vistaProvincia(slug){
     + '<div class="sezione-testa"><h2 class="sezione">Composizione per grado</h2></div>'
     + '<div class="riquadro">' + composizione(p.fam) + "</div>"
     + "</div></section>"
+    + '<section class="blocco"><div class="guscio">'
+    + '<div class="sezione-testa"><h2 class="sezione">I paesi della provincia</h2>'
+    + "<p>Ogni cerchio &egrave; un comune, grande quanto le scuole che ha. Toccalo per entrarci.</p></div>"
+    + '<div class="riquadro" id="paesi-provincia"></div>'
+    + "</div></section>"
     + '<section class="blocco"><div class="guscio" id="dettaglio-provincia"></div></section>';
+
+  const riquadroPaesi = document.getElementById("paesi-provincia");
+  riquadroPaesi.innerHTML = attesa("Carico i punti dei comuni");
+  conComuni().then(function(){
+    if (document.getElementById("paesi-provincia") === riquadroPaesi){
+      riquadroPaesi.innerHTML = mappaComuni({ provincia: slug, titolo: "I comuni della provincia di " + p.n });
+    }
+  }).catch(function(){
+    riquadroPaesi.innerHTML = '<div class="avviso"><strong>Punti dei comuni non raggiungibili</strong></div>';
+  });
 
   conAttesa(document.getElementById("dettaglio-provincia"), function(){
     const ip = A.PROV.findIndex(function(v){ return v[1] === slug; });
@@ -749,7 +910,7 @@ function vistaProvincia(slug){
       perIstituto.set(A.iIst[i], (perIstituto.get(A.iIst[i]) || 0) + 1);
     });
     const comuni = Array.from(perComune.entries())
-      .map(function(e){ return { nome: tondo(A.COM[e[0]][1]), valore: e[1], href:"#/comune/" + A.COM[e[0]][0] }; })
+      .map(function(e){ return { nome: A.COM[e[0]][1], valore: e[1], href:"#/comune/" + A.COM[e[0]][0] }; })
       .sort(function(a,b){ return b.valore - a.valore || (a.nome < b.nome ? -1 : 1); });
     const istituti = Array.from(perIstituto.entries())
       .map(function(e){ return { nome: tondo(A.IST[e[0]][1]) || A.IST[e[0]][0], valore: e[1],
@@ -766,6 +927,23 @@ function vistaProvincia(slug){
   });
 }
 
+/* Dove sta il paese, dentro la sua provincia. Non e' la via: e' il colpo
+   d'occhio che dice "e' quassu' in montagna" o "e' sulla costa". Per la via
+   c'e' il pulsante che apre il navigatore. */
+function localizzatore(dentro, provinciaSlug, codiceComune, nomeProvincia){
+  dentro.innerHTML = attesa("Carico i punti dei comuni");
+  conComuni().then(function(){
+    if (!dentro.isConnected) return;
+    dentro.innerHTML = mappaComuni({
+      provincia: provinciaSlug,
+      evidenzia: codiceComune,
+      titolo: "Dove sta il comune nella provincia di " + nomeProvincia
+    });
+  }).catch(function(){
+    dentro.innerHTML = '<div class="avviso"><strong>Punti dei comuni non raggiungibili</strong></div>';
+  });
+}
+
 /* --- un comune ------------------------------------------------------------ */
 function vistaComune(codice){
   vista.innerHTML = '<section class="blocco"><div class="guscio" id="contenuto-comune"></div></section>';
@@ -777,18 +955,22 @@ function vistaComune(codice){
     const uno = scuola(indici[0]);
     vista.innerHTML = briciole([
         {nome:"Apertura", href:"#/"}, {nome:uno.regione, href:"#/regione/" + uno.regioneSlug},
-        {nome:uno.provincia, href:"#/provincia/" + uno.provinciaSlug}, {nome:tondo(uno.comune)}])
+        {nome:uno.provincia, href:"#/provincia/" + uno.provinciaSlug}, {nome:uno.comune}])
       + '<section class="blocco"><div class="guscio">'
       + '<p class="occhiello">Comune &middot; ' + esc(uno.provincia) + "</p>"
-      + '<h1 class="titolo">' + esc(tondo(uno.comune)) + "</h1>"
+      + '<h1 class="titolo">' + esc(uno.comune) + "</h1>"
       + '<p class="strillo"><b>' + num(indici.length) + "</b> "
       + (indici.length === 1 ? "sede scolastica statale" : "sedi scolastiche statali")
       + ". Codice catastale <b>" + esc(codice) + "</b>.</p>"
       + "</div></section>"
       + '<section class="blocco"><div class="guscio">'
-      + '<div class="riquadro">' + composizione(famigliaDelleScuole(indici)) + "</div>"
+      + '<div class="locatore">'
+      +   '<div class="riquadro" id="dove-comune"></div>'
+      +   '<div class="riquadro">' + composizione(famigliaDelleScuole(indici)) + "</div>"
+      + "</div>"
       + '<div id="schede-comune"></div>'
       + "</div></section>";
+    localizzatore(document.getElementById("dove-comune"), uno.provinciaSlug, codice, uno.provincia);
     elencoSchede(document.getElementById("schede-comune"), indici);
   });
 }
@@ -805,7 +987,7 @@ function vistaIstituto(codice){
     vista.innerHTML = briciole([
         {nome:"Apertura", href:"#/"}, {nome:uno.regione, href:"#/regione/" + uno.regioneSlug},
         {nome:uno.provincia, href:"#/provincia/" + uno.provinciaSlug},
-        {nome:tondo(uno.comune), href:"#/comune/" + uno.comuneCod}, {nome:"Istituto"}])
+        {nome:uno.comune, href:"#/comune/" + uno.comuneCod}, {nome:"Istituto"}])
       + '<section class="blocco"><div class="guscio">'
       + '<p class="occhiello">Istituto di riferimento</p>'
       + '<h1 class="titolo">' + esc(tondo(uno.istNome) || codice) + "</h1>"
@@ -813,7 +995,7 @@ function vistaIstituto(codice){
       + num(indici.length) + "</b> "
       + (indici.length === 1 ? "sede" : "sedi")
       + (direttiva !== undefined
-          ? ", con la sede direttiva a " + esc(tondo(scuola(direttiva).comune)) : "")
+          ? ", con la sede direttiva a " + esc(scuola(direttiva).comune) : "")
       + ".</p>"
       + "</div></section>"
       + '<section class="blocco"><div class="guscio">'
@@ -835,9 +1017,12 @@ function vistaScuola(codice){
     vista.innerHTML = briciole([
         {nome:"Apertura", href:"#/"}, {nome:s.regione, href:"#/regione/" + s.regioneSlug},
         {nome:s.provincia, href:"#/provincia/" + s.provinciaSlug},
-        {nome:tondo(s.comune), href:"#/comune/" + s.comuneCod}, {nome:tondo(s.nome) || s.codice}])
+        {nome:s.comune, href:"#/comune/" + s.comuneCod}, {nome:tondo(s.nome) || s.codice}])
       + '<section class="blocco"><div class="guscio">'
-      + '<div style="max-width:620px">' + schedaScuola(i) + "</div>"
+      + '<div class="locatore">'
+      +   "<div>" + schedaScuola(i) + "</div>"
+      +   '<div class="riquadro" id="dove-scuola"></div>'
+      + "</div>"
       + "</div></section>"
       + (sorelle.length
         ? '<section class="blocco"><div class="guscio">'
@@ -851,6 +1036,7 @@ function vistaScuola(codice){
             }).join("") + "</div>"
           + "</div></section>"
         : "");
+    localizzatore(document.getElementById("dove-scuola"), s.provinciaSlug, s.comuneCod, s.provincia);
   });
 }
 
