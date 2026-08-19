@@ -740,7 +740,10 @@ function schedaScuola(i){
     ? '<a href="mailto:' + esc(s.email) + '">' + esc(s.email) + "</a>"
       + (s.emailRicavata ? '<span class="ricavata">ricostruita dal codice dell&rsquo;istituto</span>' : "")
     : vuoto("non depositata"));
-  voci += voce("PEC", s.pec ? '<a href="mailto:' + esc(s.pec) + '">' + esc(s.pec) + "</a>" : vuoto("non depositata"));
+  /* La posta certificata risulta depositata per due scuole su 50.273: una
+     riga che dice "non depositata" cinquantamila volte non informa nessuno,
+     occupa e basta. Quando c'e' si vede, quando non c'e' sparisce. */
+  if (s.pec) voci += voce("PEC", '<a href="mailto:' + esc(s.pec) + '">' + esc(s.pec) + "</a>");
   voci += voce("Sito", s.sito
     ? '<a href="' + esc(indirizzoWeb(s.sito)) + '" target="_blank" rel="noopener">' + esc(s.sito) + "</a>"
     : vuoto("non depositato"));
